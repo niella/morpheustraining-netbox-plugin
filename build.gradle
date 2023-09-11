@@ -1,0 +1,116 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath "com.github.jengelman.gradle.plugins:shadow:6.0.0"
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:$assetPipelineVersion"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'asset-pipeline'
+
+group = 'com.ipam.netbox'
+sourceCompatibility = '1.11'
+targetCompatibility = '1.11'
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+repositories {
+	mavenLocal()
+	mavenCentral()
+}
+
+configurations {
+	provided
+}
+
+dependencies {
+	provided "com.morpheusdata:morpheus-plugin-api:$plugincore"
+	provided "org.codehaus.groovy:groovy-all:$groovyVersion"
+	implementation 'commons-beanutils:commons-beanutils:1.9.3'
+	implementation "org.slf4j:slf4j-api:$slf4jVersion"
+	implementation "org.slf4j:slf4j-parent:$slf4jVersion"
+	implementation 'commons-net:commons-net:3.6'
+
+	testImplementation "com.morpheusdata:morpheus-plugin-api:0.14.3"
+	testImplementation 'io.reactivex.rxjava2:rxjava:2.2.0'
+	testImplementation 'org.apache.httpcomponents:httpclient:4.5.3'
+	testImplementation 'org.apache.httpcomponents:httpcore:4.4.5'
+
+	testImplementation "org.codehaus.groovy:groovy-all:$groovyVersion"
+	testImplementation "com.morpheusdata:morpheus-test-provider:0.8.0"
+	testImplementation 'net.bytebuddy:byte-buddy:1.9.3'
+	testImplementation 'org.objenesis:objenesis:2.6'
+	testImplementation "org.spockframework:spock-core:$spockVersion"
+	testImplementation 'cglib:cglib-nodep:3.2.12'
+
+	testImplementation "org.slf4j:slf4j-parent:$slf4jVersion"
+	testImplementation 'org.slf4j:slf4j-api:1.7.32' // Update the version if necessary
+	testImplementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.14.1' // Log4j2 SLF4J binding
+	testImplementation 'org.apache.logging.log4j:log4j-core:2.14.1' // Log4j2 core implementation
+}
+
+
+sourceSets {
+	main {
+		compileClasspath += configurations.provided
+		groovy {
+			srcDirs = ['src/main/groovy', 'src/main/java']
+		}
+		java {
+			srcDirs = []
+		}
+	}
+}
+
+jar {
+	archiveFileName.set('morpheus-netbox-plugin-1.0.jar')
+	manifest {
+		attributes(
+				'Plugin-Class': 'com.ipam.netbox.NetboxPlugin',
+				'Plugin-Version': version,
+				'Morpheus-Name': 'Netbox',
+				'Morpheus-Organization': 'morpheus',
+				'Morpheus-Code': 'morpheus-netbox-plugin',
+				'Morpheus-Description': 'Plugin for Netbox IPAM',
+				'Morpheus-Logo': 'assets/netbox-logo.svg',
+				'Morpheus-Logo-Dark': 'assets/netbox-logo.svg',
+				'Morpheus-Color': '#ffffff',
+				'Morpheus-Labels': 'Plugin, Networking, Network, Netbox, IP',
+				'Morpheus-Repo': 'https://github.com/gomorpheus/morpheus-plugin-core',
+				'Morpheus-Min-Appliance-Version': "5.5.2"
+		)
+	}
+}
+
+
+task(console, dependsOn: 'classes', type: JavaExec) {
+	main = 'groovy.ui.Console'
+	classpath = sourceSets.main.compileClasspath + sourceSets.main.runtimeClasspath
+}
+
+
+test {
+	testLogging {
+		events "passed", "skipped", "failed", "standardOut", "standardError"
+		exceptionFormat = 'full'
+		showStandardStreams = true
+	}
+}
+
+//shadowJar {
+//	 archiveFileName = "${baseName}-${version}.jar"
+//}
+
+tasks.withType(Sign) {
+    onlyIf { isReleaseVersion }
+}
+
+
+tasks.assemble.dependsOn tasks.shadowJar
